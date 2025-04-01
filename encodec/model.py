@@ -142,6 +142,7 @@ class EncodecModel(nn.Module):
         for offset in range(0, length, stride):
             frame = x[:, :, offset: offset + segment_length]
             encoded_frames.append(self._encode_frame(frame))
+        # print("Encoded frames:", np.array([e[0] for e in encoded_frames]).shape)
         return encoded_frames
 
     def _encode_frame(self, x: torch.Tensor) -> EncodedFrame:

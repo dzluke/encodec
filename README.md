@@ -2,6 +2,29 @@
 ![linter badge](https://github.com/facebookresearch/encodec/workflows/linter/badge.svg)
 ![tests badge](https://github.com/facebookresearch/encodec/workflows/tests/badge.svg)
 
+
+# Luke's notes
+## How to run locally on CNMAT GPU
+```
+conda create -n encodec python=3.8
+pip install -e '.[dev]'
+conda install numpy 
+conda install pytorch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 pytorch-cuda=12.1 -c pytorch -c nvidia
+conda install conda-forge::einops
+python -m encodec
+```
+
+To run encoding + decoding:
+```aiignore
+python -m encodec --hq INPUT_FILE OUTPUT_WAV_FILE
+```
+`--hq` gives 48khz stereo output
+
+
+
+
+---------
+
 This is the code for the EnCodec neural codec presented in the [High Fidelity Neural Audio Compression](https://arxiv.org/pdf/2210.13438.pdf) [[abs]](https://arxiv.org/abs/2210.13438).
 paper. We provide our two multi-bandwidth models:
 * A causal model operating at 24 kHz on monophonic audio trained on a variety of audio data.

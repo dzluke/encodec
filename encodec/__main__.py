@@ -119,5 +119,49 @@ def main():
             save_audio(out, args.output, out_sample_rate, rescale=args.rescale)
 
 
+def network_bending_main(args):
+    if not args.input.exists():
+        fatal(f"Input file {args.input} does not exist.")
+
+    if args.input.suffix.lower() == SUFFIX:
+        # Decompression
+        if args.output is None:
+            args.output = args.input.with_name(args.input.stem + args.decompress_suffix).with_suffix('.wav')
+        elif args.output.suffix.lower() != '.wav':
+            fatal("Output extension must be .wav")
+        check_output_exists(args)
+        out, out_sample_rate = decompress(args.input.read_bytes())
+        check_clipping(out, args)
+        save_audio(out, args.output, out_sample_rate, rescale=args.rescale)
+    else:
+        # Compression
+        if args.output is None:
+            args.output = args.input.with_suffix(SUFFIX)
+        elif args.output.suffix.lower() not in [SUFFIX, '.wav']:
+            fatal(f"Output extension must be .wav or {SUFFIX}")
+        check_output_exists(args)
+
+        model_name = 'encodec_48khz' if args.hq else 'encodec_24khz'
+        model = MODELS[model_name]()
+        if args.bandwidth not in model.target_bandwidths:
+            fatal(f"Bandwidth {args.bandwidth} is not supported by the model {model_name}")
+        model.set_target_bandwidth(args.bandwidth)
+
+        wav, sr = torchaudio.load(args.input)
+        wav = convert_audio(wav, sr, model.sample_rate, model.channels)
+        compressed = compress(model, wav, use_lm=args.lm, bending_fn=args.bending_fn)
+        # compressed is binary data
+
+        if args.output.suffix.lower() == SUFFIX:
+            args.output.write_bytes(compressed)
+        else:
+            # Directly run decompression stage
+            assert args.output.suffix.lower() == '.wav'
+            out, out_sample_rate = decompress(compressed)
+            check_clipping(out, args)
+            save_audio(out, args.output, out_sample_rate, rescale=args.rescale)
+
+
+
 if __name__ == '__main__':
     main()
