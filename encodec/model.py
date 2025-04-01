@@ -105,6 +105,8 @@ class EncodecModel(nn.Module):
         self.bits_per_codebook = int(math.log2(self.quantizer.bins))
         assert 2 ** self.bits_per_codebook == self.quantizer.bins, \
             "quantizer bins must be a power of 2."
+        self.network_bending_function: tp.Optional[tp.Callable] = None
+        self.bending_location: str = None
 
     @property
     def segment_length(self) -> tp.Optional[int]:
@@ -160,6 +162,8 @@ class EncodecModel(nn.Module):
             scale = None
 
         emb = self.encoder(x)
+        if self.bending_location == "encode":
+            emb = self.apply_bending(emb)
         codes = self.quantizer.encode(emb, self.frame_rate, self.bandwidth)
         codes = codes.transpose(0, 1)
         # codes is [B, K, T], with T frames, K nb of codebooks.
@@ -217,6 +221,22 @@ class EncodecModel(nn.Module):
         lm.load_state_dict(state)
         lm.eval()
         return lm
+
+    def set_network_bending_function(self, bending_function: tp.Optional[tp.Callable]):
+        """Set the network bending function."""
+        self.network_bending_function = bending_function
+
+    def set_bending_location(self, location: str):
+        """Set the location for network bending."""
+        if location not in ["encode", "between", "decode"]:
+            raise ValueError("Invalid bending location. Must be 'encode', 'between', or 'decode'.")
+        self.bending_location = location
+
+    def apply_bending(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply the network bending function if it is set."""
+        if self.network_bending_function:
+            return self.network_bending_function(x)
+        return x
 
     @staticmethod
     def _get_model(target_bandwidths: tp.List[float],

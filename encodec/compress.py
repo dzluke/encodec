@@ -26,7 +26,7 @@ MODELS = {
 
 
 def compress_to_file(model: EncodecModel, wav: torch.Tensor, fo: tp.IO[bytes],
-                     use_lm: bool = True, bending_fn: tp.Callable[[torch.tensor], torch.tensor] = None):
+                     use_lm: bool = True):
     """Compress a waveform to a file-object using the given model.
 
     Args:
@@ -50,12 +50,9 @@ def compress_to_file(model: EncodecModel, wav: torch.Tensor, fo: tp.IO[bytes],
     with torch.no_grad():
         frames = model.encode(wav[None])
 
-    # bend on frames here
-    # each element of frames is a tuple: (code, scale)
-    for i, frame in enumerate(frames):
-        code, scale = frame
-        bent_code = bending_fn(code).int()  # the codes must all be integers
-        frames[i] = bent_code, scale
+    # Apply bending using the model's apply_bending method
+    if model.bending_location == 'between':
+        frames = [(model.apply_bending(code).int(), scale) for code, scale in frames]
 
     metadata = {
         'm': model.name,                 # model name
@@ -163,7 +160,7 @@ def decompress_from_file(fo: tp.IO[bytes], device='cpu') -> tp.Tuple[torch.Tenso
     return wav[0, :, :audio_length], model.sample_rate
 
 
-def compress(model: EncodecModel, wav: torch.Tensor, use_lm: bool = False, bending_fn: tp.Callable[[torch.tensor], torch.tensor] = None) -> bytes:
+def compress(model: EncodecModel, wav: torch.Tensor, use_lm: bool = False) -> bytes:
     """Compress a waveform using the given model. Returns the compressed bytes.
 
     Args:
@@ -176,7 +173,7 @@ def compress(model: EncodecModel, wav: torch.Tensor, use_lm: bool = False, bendi
             quite a bit, expect between 20 to 30% of size reduction.
     """
     fo = io.BytesIO()
-    compress_to_file(model, wav, fo, use_lm=use_lm, bending_fn=bending_fn)
+    compress_to_file(model, wav, fo, use_lm=use_lm)
     return fo.getvalue()
 
 

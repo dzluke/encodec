@@ -50,6 +50,10 @@ def get_parser():
     parser.add_argument(
         '-r', '--rescale', action='store_true',
         help='Automatically rescale the output to avoid clipping.')
+    parser.add_argument(
+        '--bending_location', type=str, choices=['encode', 'between'], default='between',
+        help='Location to perform network bending: "encode" for during encoding, '
+             '"between" for between encoding and decoding.')
     return parser
 
 
@@ -147,9 +151,13 @@ def network_bending_main(args):
             fatal(f"Bandwidth {args.bandwidth} is not supported by the model {model_name}")
         model.set_target_bandwidth(args.bandwidth)
 
+        # Set network bending params
+        model.set_network_bending_function(args.bending_fn)
+        model.set_bending_location(args.bending_location)
+
         wav, sr = torchaudio.load(args.input)
         wav = convert_audio(wav, sr, model.sample_rate, model.channels)
-        compressed = compress(model, wav, use_lm=args.lm, bending_fn=args.bending_fn)
+        compressed = compress(model, wav, use_lm=args.lm)
         # compressed is binary data
 
         if args.output.suffix.lower() == SUFFIX:
@@ -160,7 +168,6 @@ def network_bending_main(args):
             out, out_sample_rate = decompress(compressed)
             check_clipping(out, args)
             save_audio(out, args.output, out_sample_rate, rescale=args.rescale)
-
 
 
 if __name__ == '__main__':

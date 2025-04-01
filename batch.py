@@ -18,7 +18,7 @@ bending_tests = [
     {"func": util.multiply, "r_values": [1, 2, 4, -1]},
     {"func": util.multiply, "r_values": [1, 2, 4, -1]},
     {"func": util.threshold, "r_values": [1, 10, 100, 1000]},
-    {"func": util.log, "r_values": [-1]},
+    {"func": util.log, "r_values": [10]},
     {"func": util.power, "r_values": [0, 2, 5]},
 ]
 
@@ -26,7 +26,7 @@ bending_tests = [
 audio_files = ["test_48k.wav"]
 
 # Define layers to apply bending at
-layers = ["NA"]
+locations = ["encode", "between"]
 
 # Run tests
 for audio in audio_files:
@@ -40,9 +40,9 @@ for audio in audio_files:
         func_name = func.__name__  # Infer function name dynamically
 
         for r in test["r_values"]:
-            for layer in layers:
+            for location in locations:
                 # Create unique output filename for each experiment
-                experiment_name = f"{func_name}_r{r}_layer{layer}.wav"
+                experiment_name = f"{func_name}_r{r}_{location}.wav"
                 output_path = audio_folder / experiment_name
 
                 # Skip processing if file exists and FORCE_RERUN is False
@@ -60,12 +60,13 @@ for audio in audio_files:
                     input=audio,
                     output=output_path,
                     bending_fn=bending_fn,
-                    layer=layer,
+                    # layer=layer,
                     hq=True,  # Use stereo 48kHz model
                     lm=False,  # No advanced language model (faster)
                     force=True,  # Overwrite if file exists
                     rescale=True,
-                    bandwidth=6
+                    bandwidth=6,
+                    bending_location=location
                 )
 
                 # Call the main processing function
